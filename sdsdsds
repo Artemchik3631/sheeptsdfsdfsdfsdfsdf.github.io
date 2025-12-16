@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SellSharp — AI для продающих объявлений</title>
+  <style>
+    * { box-sizing: border-box; font-family: Inter, Arial, sans-serif; }
+    body {
+      margin: 0;
+      background: #0f1115;
+      color: #fff;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 32px;
+      border-bottom: 1px solid #1f232b;
+      background: linear-gradient(180deg, #12151c, #0f1115);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+    }
+    .logo span {
+      background: linear-gradient(135deg, #5b7cff, #7b5bff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .user {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1f232b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    main {
+      display: flex;
+      height: calc(100vh - 81px);
+    }
+    .chat {
+      flex: 3;
+      padding: 32px;
+    }
+    .history {
+      flex: 1;
+      border-right: 1px solid #1f232b;
+      padding: 24px;
+      background: #12151c;
+    }
+    .history.empty::after {
+      content: "История появится после первого запроса";
+      color: #555;
+      font-size: 13px;
+    }
+    .history h3 {
+      margin-top: 0;
+      font-size: 14px;
+      color: #aaa;
+    }
+    .history-item {
+      background: #1a1e27;
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .input-box {
+      margin-top: 120px;
+      background: #1a1e27;
+      border-radius: 24px;
+      padding: 18px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .input-box textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      resize: none;
+      outline: none;
+      font-size: 15px;
+    }
+    .send {
+      background: linear-gradient(135deg, #5b7cff, #7b5bff);
+      border: none;
+      border-radius: 14px;
+      padding: 10px 18px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .features {
+      margin-top: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .feature {
+      background: #1a1e27;
+      padding: 18px;
+      border-radius: 18px;
+      font-size: 14px;
+    }
+    .api-box {
+      margin-top: 30px;
+      background: #1a1e27;
+      padding: 18px;
+      border-radius: 18px;
+    }
+    .api-box input {
+      width: 100%;
+      background: #0f1115;
+      border: 1px solid #2a2f3a;
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">⚡ <span>SellSharp</span></div>
+    <div class="user">👤</div>
+  </header>
+  <main>
+    <aside class="history">
+      <h3>История запросов</h3>
+      <!-- История появится после первого запроса -->
+    </aside>
+    <div class="chat">
+      <h1>Создайте продающее объявление с помощью AI</h1>
+      <p style="color:#aaa">Опишите товар, загрузите фото или просто напишите пару слов — SellSharp сделает идеальное описание без ошибок.</p>
+      <div class="input-box">
+        <textarea rows="2" placeholder="Например: iPhone 13, отличное состояние, полный комплект"></textarea>
+        <button class="send">Создать</button>
+      </div>
+      <div class="chat-response" id="chat-response" style="display:none; margin-top:32px; display:flex; flex-direction:column; gap:16px;"></div>
+        <div id="chat-text" style="line-height:1.6"></div>
+      </div>
+      <div class="loader" id="loader" style="display:none; margin-top:20px; color:#aaa">🤖 AI думает…</div>
+      <div class="features">
+        <div class="feature">✨ Продающие заголовки</div>
+        <div class="feature">📸 Анализ фото товара</div>
+        <div class="feature">💰 Подсказка цены</div>
+        <div class="feature">🚀 Оптимизация под Avito и маркетплейсы</div>
+      </div>
+    </div>
+  </main>
+  <script>
+  const textarea = document.querySelector('.input-box textarea');
+  const sendBtn = document.querySelector('.send');
+  const history = document.querySelector('.history');
+  const chatBox = document.getElementById('chat-response');
+
+  // хранилище диалогов
+  const dialogs = [];
+
+  function renderChat(dialog) {
+    chatBox.innerHTML = '';
+    chatBox.style.display = 'flex';
+
+    dialog.messages.forEach(msg => {
+      const bubble = document.createElement('div');
+      bubble.style.maxWidth = '70%';
+      bubble.style.padding = '14px 18px';
+      bubble.style.borderRadius = '18px';
+      bubble.style.marginBottom = '8px';
+
+      if (msg.role === 'user') {
+        bubble.style.alignSelf = 'flex-end';
+        bubble.style.background = 'linear-gradient(135deg, #5b7cff, #7b5bff)';
+        bubble.textContent = msg.text;
+      } else {
+        bubble.style.alignSelf = 'flex-start';
+        bubble.style.background = '#1a1e27';
+        bubble.innerHTML = '<span style="opacity:0.7">🤖 AI думает…</span>';
+      }
+
+      chatBox.appendChild(bubble);
+    });
+  }
+
+  function sendMessage() {
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    // создать новый диалог
+    const dialog = {
+      title: text.length > 40 ? text.slice(0, 40) + '…' : text,
+      messages: [
+        { role: 'user', text },
+        { role: 'ai', text: '' }
+      ]
+    };
+
+    dialogs.push(dialog);
+
+    // показать историю
+    if (!history.querySelector('h3')) {
+      history.innerHTML = '<h3>История запросов</h3>';
+    }
+
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.textContent = dialog.title;
+    history.appendChild(item);
+
+    item.addEventListener('click', () => {
+      renderChat(dialog);
+    });
+
+    renderChat(dialog);
+    textarea.value = '';
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+</script>
+  <script>
+    const textarea = document.querySelector('.input-box textarea');
+    const sendBtn = document.querySelector('.send');
+    const history = document.querySelector('.history');
+
+    function sendMessage() {
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.textContent = text.length > 40 ? text.slice(0, 40) + '…' : text;
+      history.appendChild(item);
+
+      item.addEventListener('click', () => {
+        chatBox.innerHTML = '';
+
+        const restoredUser = document.createElement('div');
+        restoredUser.style.alignSelf = 'flex-end';
+        restoredUser.style.background = 'linear-gradient(135deg, #5b7cff, #7b5bff)';
+        restoredUser.style.padding = '14px 18px';
+        restoredUser.style.borderRadius = '18px';
+        restoredUser.style.maxWidth = '70%';
+        restoredUser.textContent = item.textContent;
+        chatBox.appendChild(restoredUser);
+
+        const restoredAI = document.createElement('div');
+        restoredAI.style.alignSelf = 'flex-start';
+        restoredAI.style.background = '#1a1e27';
+        restoredAI.style.padding = '14px 18px';
+        restoredAI.style.borderRadius = '18px';
+        restoredAI.style.maxWidth = '70%';
+        restoredAI.innerHTML = '<span style="opacity:0.7">🤖 AI думает…</span>';
+        chatBox.appendChild(restoredAI);
+      });
+
+      textarea.value = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
